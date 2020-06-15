@@ -8,7 +8,7 @@ class CPU:
     def __init__(self):
         """Construct a new CPU."""
         #Setup some amount of digits
-        storage = [0] * 8 #find a certain number here
+        storage = [0] * 8 #find a certain number here123123
 
     def load(self):
         """Load a program into memory."""
