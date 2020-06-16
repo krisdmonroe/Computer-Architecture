@@ -8,7 +8,10 @@ class CPU:
     def __init__(self):
         """Construct a new CPU."""
         #Setup some amount of digits
-        storage = [0] * 8 #find a certain number here123123
+        self.ram = [0] * 256 
+        self.reg = [0] * 8
+        self.pc = 0
+        self.ir = 0
 
     def load(self):
         """Load a program into memory."""
@@ -29,6 +32,7 @@ class CPU:
 
         for instruction in program:
             self.ram[address] = instruction
+            # self.ram_write(instruction, address)
             address += 1
 
 
@@ -63,4 +67,33 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        pass
+        # pc = 0
+        running = True
+        while running:
+            self.ir = self.ram[self.pc] #instruction register
+        # if ir == 0b10000010: # Set the value of a register to an integer.
+            if self.ir == 0b10000010:
+                #register a number with pc in memory starting at the command 0b10000010
+                reg_num = self.ram[self.pc + 1]
+                value = self.ram[self.pc + 2]
+                # add the value of reg_num or the first place after the command to value
+                self.reg[reg_num] = value
+                #update pc based on location in program
+                self.pc += 3
+            elif self.ir == 0b01000111:
+                reg_num = self.ram[self.pc + 1]
+                print(self.reg[reg_num])
+                self.pc += 2
+            elif self.ir == 0b00000001:
+                running = False
+                self.pc += 1
+            else:
+                print(f'Unkown instruction {self.ir} at address {self.pc}')
+                # self.trace()
+                sys.exit(1)
+        
+    def ram_read(self, pc):
+        return self.ram[pc]
+
+    def ram_write(self, value, pc):
+        self.reg[pc] = value
