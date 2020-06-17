@@ -17,20 +17,27 @@ class CPU:
         self.PRN = 0b01000111
         self.HLT = 0b00000001
         self.MULT = 0b10100010
+        self.PUSH = 0b01000101
+        self.POP = 0b01000110
         self.branch_table = {
                 self.LDI:self.ldi,
                 self.PRN:self.prn,
                 self.HLT:self.hlt,
-                self.MULT:self.mult
+                self.MULT:self.mult,
+                self.PUSH:self.push,
+                self.POP:self.pop,
             }
+        self.sp = 7 #something like this i think
+        self.reg[self.sp] = 0xf4
 
+    #figure out how to do sp here
     def load(self):
         """Load a program into memory."""
         filename = sys.argv[1]
         with open(filename) as f:  # opens file
             address = 0
             for line in f: # reads file line by line
-                line = line.split('#') # turns the line into int instead of string
+                line = line.split('#')
                 line = line[0].strip() #list
                 if line == '':
                     continue
@@ -114,40 +121,14 @@ class CPU:
         # running = True
         while self.running:
             ir = self.ram[self.pc] #instruction register
-            # if self.ir == 0b10000010: # Set the value of a register to an integer.
-            #     #register a number with pc in memory starting at the command 0b10000010
-            #     # reg_num = self.ram[self.pc + 1]
-            #     # value = self.ram[self.pc + 2]
-            #     reg_num = self.ram_read(self.pc + 1)
-            #     value = self.ram_read(self.pc + 2)
-            #     # add the value of reg_num or the first place after the command to value
-            #     self.reg[reg_num] = value
-            #     #update pc based on location in program
-            #     self.pc += 3
-            # if self.ir == 0b01000111:
-            #     # reg_num = self.ram[self.pc + 1]
-            #     # print(self.reg[reg_num])
-            #     print(self.reg[self.ram_read(self.pc + 1)])
-            #     self.pc += 2
-            # if self.ir == 0b10100010:
-            #     reg_a = self.ram[self.pc + 1]
-            #     reg_b = self.ram[self.pc + 2]
-            #     self.alu("MULT", reg_a, reg_b)
-            #     self.pc += 3
-            # if self.ir == 0b00000001:
-            #     running = False
-            #     self.pc += 1
-            # else:
-            #     print(f'Unkown instruction {self.ir} at address {self.pc}')
-            #     # self.trace()
-            #     sys.exit(1)
             # -------------------------------------------
-            #            branch_table[n](x, y)
+            #            Example: branch_table[n](x, y) Not necessary to pass in x or y just yet but mayb
             # -------------------------------------------
-            if self.branch_table:
+            if ir in self.branch_table:
                 self.branch_table[ir]() #Do not forget to use () to activate the function you are calling
             else:
                 print(f'Unkown instruction {self.ir} at address {self.pc}')
+                sys.exit(1)
         
     def ram_read(self, pc):
         return self.ram[pc]
@@ -179,10 +160,14 @@ class CPU:
         #     # print(self.reg[reg_num])
         #     print(self.reg[self.ram_read(self.pc + 1)])
         #     self.pc += 2
+
     def hlt(self):
         self.running = False
         self.pc += 1
-        
+        # if self.ir == 0b00000001:
+        #     running = False
+        #     self.pc += 1
+
     def mult(self):
         reg_a = self.ram[self.pc + 1]
         reg_b = self.ram[self.pc + 2]
@@ -193,3 +178,35 @@ class CPU:
         #     reg_b = self.ram[self.pc + 2]
         #     self.alu("MULT", reg_a, reg_b)
         #     self.pc += 3
+
+    def push(self):
+         # decrement SP
+	    self.reg[self.sp] -= 1
+
+	    # Get the value we want to store from the register
+	    reg_num = self.ram[self.pc + 1]
+	    value = self.reg[reg_num]  # <-- this is the value that we want to push 
+
+	    # Figure out where to store it
+	    top_of_stack_addr = self.reg[self.sp]
+
+	    # Store it
+	    self.ram[top_of_stack_addr] = value
+
+	    self.pc += 2
+        # self.reg[self.sp] -= 1
+        # value = self.ram_read(self.pc + 1)
+        # top = self.reg[self.sp]
+        # self.ram_write(value, top)
+        # self.pc += 2
+
+    # Figure this out--------------------------
+    def pop(self):
+        # 1. Copy the value from the address pointed to by `SP` to the given register.
+        reg_index = self.ram_read(self.pc + 1)
+        self.reg[reg_index] = self.ram[self.reg[self.sp]]
+        # 2. Increment `SP`.
+        self.reg[self.sp] += 1
+
+        self.pc += 2
+
