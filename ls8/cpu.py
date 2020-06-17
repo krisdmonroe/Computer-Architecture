@@ -207,6 +207,6 @@ class CPU:
         self.reg[reg_index] = self.ram[self.reg[self.sp]]
         # 2. Increment `SP`.
         self.reg[self.sp] += 1
-
+        #increment the pc
         self.pc += 2
 
