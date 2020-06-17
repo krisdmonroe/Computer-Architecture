@@ -12,28 +12,52 @@ class CPU:
         self.reg = [0] * 8
         self.pc = 0
         self.ir = 0
+        self.running = True
+        self.LDI = 0b10000010
+        self.PRN = 0b01000111
+        self.HLT = 0b00000001
+        self.MULT = 0b10100010
+        self.branch_table = {
+                self.LDI:self.ldi,
+                self.PRN:self.prn,
+                self.HLT:self.hlt,
+                self.MULT:self.mult
+            }
 
     def load(self):
         """Load a program into memory."""
-
-        address = 0
+        filename = sys.argv[1]
+        with open(filename) as f:  # opens file
+            address = 0
+            for line in f: # reads file line by line
+                line = line.split('#') # turns the line into int instead of string
+                line = line[0].strip() #list
+                if line == '':
+                    continue
+                #turns the line into <int> instead of string store the address in memory
+                self.ram[address] = int(line, base=2) 
+                address +=1 #add one and goes to the next
+                # print(line)                
+        # print(self.ram[:15])
+        # sys.exit(0)
+        
 
         # For now, we've just hardcoded a program:
 
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
+        # program = [
+        #     # From print8.ls8
+        #     0b10000010, # LDI R0,8
+        #     0b00000000,
+        #     0b00001000,
+        #     0b01000111, # PRN R0
+        #     0b00000000,
+        #     0b00000001, # HLT
+        # ]
 
-        for instruction in program:
-            self.ram[address] = instruction
-            # self.ram_write(instruction, address)
-            address += 1
+        # for instruction in program:
+        #     # self.ram[address] = instruction
+        #     self.ram_write(instruction, address)
+        #     address += 1
 
 
     def alu(self, op, reg_a, reg_b):
@@ -42,6 +66,8 @@ class CPU:
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
         #elif op == "SUB": etc
+        elif op == "MULT":
+            self.reg[reg_a] *= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -64,36 +90,106 @@ class CPU:
             print(" %02X" % self.reg[i], end='')
 
         print()
+    # def trace(self, LABEL=str()):
+        
+    #     print(f"{LABEL} TRACE --> PC: %02i | RAM: %03i %03i %03i | Register: " % (
+    #         self.pc,
+    #         # self.fl,
+    #         # self.ie,
+    #         self.ram_read(self.pc),
+    #         self.ram_read(self.pc + 1),
+    #         self.ram_read(self.pc + 2)
+    #     ), end='')
+    #     for i in range(8):
+    #         print(" %02i" % self.reg[i], end='')
+    #     print(" | Stack:", end='')
+        
+    #     for i in range(240, 244):
+    #         print(" %02i" % self.ram_read(i), end='')
+    #     print()
 
     def run(self):
         """Run the CPU."""
         # pc = 0
-        running = True
-        while running:
-            self.ir = self.ram[self.pc] #instruction register
-        # if ir == 0b10000010: # Set the value of a register to an integer.
-            if self.ir == 0b10000010:
-                #register a number with pc in memory starting at the command 0b10000010
-                reg_num = self.ram[self.pc + 1]
-                value = self.ram[self.pc + 2]
-                # add the value of reg_num or the first place after the command to value
-                self.reg[reg_num] = value
-                #update pc based on location in program
-                self.pc += 3
-            elif self.ir == 0b01000111:
-                reg_num = self.ram[self.pc + 1]
-                print(self.reg[reg_num])
-                self.pc += 2
-            elif self.ir == 0b00000001:
-                running = False
-                self.pc += 1
+        # running = True
+        while self.running:
+            ir = self.ram[self.pc] #instruction register
+            # if self.ir == 0b10000010: # Set the value of a register to an integer.
+            #     #register a number with pc in memory starting at the command 0b10000010
+            #     # reg_num = self.ram[self.pc + 1]
+            #     # value = self.ram[self.pc + 2]
+            #     reg_num = self.ram_read(self.pc + 1)
+            #     value = self.ram_read(self.pc + 2)
+            #     # add the value of reg_num or the first place after the command to value
+            #     self.reg[reg_num] = value
+            #     #update pc based on location in program
+            #     self.pc += 3
+            # if self.ir == 0b01000111:
+            #     # reg_num = self.ram[self.pc + 1]
+            #     # print(self.reg[reg_num])
+            #     print(self.reg[self.ram_read(self.pc + 1)])
+            #     self.pc += 2
+            # if self.ir == 0b10100010:
+            #     reg_a = self.ram[self.pc + 1]
+            #     reg_b = self.ram[self.pc + 2]
+            #     self.alu("MULT", reg_a, reg_b)
+            #     self.pc += 3
+            # if self.ir == 0b00000001:
+            #     running = False
+            #     self.pc += 1
+            # else:
+            #     print(f'Unkown instruction {self.ir} at address {self.pc}')
+            #     # self.trace()
+            #     sys.exit(1)
+            # -------------------------------------------
+            #            branch_table[n](x, y)
+            # -------------------------------------------
+            if self.branch_table:
+                self.branch_table[ir]() #Do not forget to use () to activate the function you are calling
             else:
                 print(f'Unkown instruction {self.ir} at address {self.pc}')
-                # self.trace()
-                sys.exit(1)
         
     def ram_read(self, pc):
         return self.ram[pc]
 
     def ram_write(self, value, pc):
-        self.reg[pc] = value
+        self.ram[pc] = value
+        
+    def ldi(self):
+        reg_num = self.ram_read(self.pc + 1)
+        value = self.ram_read(self.pc + 2)
+        self.reg[reg_num] = value
+        self.pc += 3
+        # if self.ir == 0b10000010: # Set the value of a register to an integer.
+        #     #register a number with pc in memory starting at the command 0b10000010
+        #     # reg_num = self.ram[self.pc + 1]
+        #     # value = self.ram[self.pc + 2]
+        #     reg_num = self.ram_read(self.pc + 1)
+        #     value = self.ram_read(self.pc + 2)
+        #     # add the value of reg_num or the first place after the command to value
+        #     self.reg[reg_num] = value
+        #     #update pc based on location in program
+        #     self.pc += 3
+
+    def prn(self):
+        print(self.reg[self.ram_read(self.pc + 1)])
+        self.pc += 2
+        # if self.ir == 0b01000111:
+        #     # reg_num = self.ram[self.pc + 1]
+        #     # print(self.reg[reg_num])
+        #     print(self.reg[self.ram_read(self.pc + 1)])
+        #     self.pc += 2
+    def hlt(self):
+        self.running = False
+        self.pc += 1
+        
+    def mult(self):
+        reg_a = self.ram[self.pc + 1]
+        reg_b = self.ram[self.pc + 2]
+        self.alu("MULT", reg_a, reg_b)
+        self.pc += 3
+        # if self.ir == 0b10100010:
+        #     reg_a = self.ram[self.pc + 1]
+        #     reg_b = self.ram[self.pc + 2]
+        #     self.alu("MULT", reg_a, reg_b)
+        #     self.pc += 3
