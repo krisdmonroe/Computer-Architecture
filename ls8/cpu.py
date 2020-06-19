@@ -294,53 +294,21 @@ class CPU:
     
     def jeq(self):
         # If `equal` flag is set (true), jump to the address stored in the given register.
-        address = self.ram_read(self.pc + 1)
+        # address = self.ram_read(self.pc + 1)
         if self.FL == 0b00000001:
-            self.pc = self.reg[address]
+            # self.pc = self.reg[address]
+            self.jmp()
         else:
             self.pc += 2
 
     def jne(self):
         # If `E` flag is clear (false, 0), jump to the address stored in the given
         # register.
-        address = self.ram_read(self.pc + 1)
+        # address = self.ram_read(self.pc + 1)
         if self.FL != 0b00000001:
-            self.pc = self.reg[address]
+            # self.pc = self.reg[address]
+            self.jmp()
         else:
             self.pc += 2
     # python3 ls8.py examples/sctest.ls8
-# BINARY (Base 2)
-# +--------128s place
-# |+-------64s place
-# ||+------32s place
-# |||+-----16s place
-# ||||+----8s place
-# |||||+---4s place
-# ||||||+--2s place
-# |||||||+-1s place
-# ||||||||
-# 1101 0011
-# 1101
-#8 + 4 + 0 + 1
-#13 = d 
-# 0011
-# 0 + 0 + 2 + 1
-# 3
-#0xd3
-# Hexadecimal (used in CSS, Hashes) 
-#     0
-#     1
-#     2
-#     3
-#     4
-#     5
-#     6
-#     7
-#     8
-#     9
-#     A -- 10
-#     B -- 11
-#     C -- 12
-#     D -- 13
-#     E -- 14
-#     F -- 15
+ 
