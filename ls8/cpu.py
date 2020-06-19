@@ -27,20 +27,22 @@ class CPU:
         self.JEQ = 0b01010101
         self.JMP = 0b01010100
         self.JNE = 0b01010110
+        self.NOP = 0b00000000
         self.branch_table = {
                 self.LDI:self.ldi,
                 self.PRN:self.prn,
-                self.HLT:self.hlt,
                 self.MULT:self.mult,
                 self.PUSH:self.push,
                 self.POP:self.pop,
                 self.CAll:self.call,
                 self.ADD:self.add,
                 self.RET:self.ret,
-                self.CMP:self.cmp,
+                self.CMP:self.cmp_,
                 self.JEQ:self.jeq,
                 self.JMP:self.jmp,
                 self.JNE:self.jne,
+                self.NOP:self.nop,
+                self.HLT:self.hlt,
             }
         # instruction_length = ((IR & 0b11000000) >>6) + 1
         # set_pc = ((IR & 0b00010000) >> 4)
@@ -53,8 +55,6 @@ class CPU:
         # * `DDDD` Instruction identifier
         self.sp = 7 
         self.reg[self.sp] = 0xf4
-        self.operand_a = self.ram_read(self.pc + 1)
-        self.operand_b = self.ram_read(self.pc + 2)
 
     #figure out how to do sp here
     def load(self):
@@ -108,15 +108,17 @@ class CPU:
             # 10 1 0 0001 - Equal To
             # * If they are equal, set the Equal `E` flag to 1, otherwise set it to 0.
             if self.reg[reg_a] == self.reg[reg_b]:
-                self.FL = 0b10100001
+                self.FL = 0b00000001
             # * If registerA is less than registerB, set the Less-than `L` flag to 1,
             # otherwise set it to 0.
             elif self.reg[reg_a] < self.reg[reg_b]:
-                self.FL = 0b10100010
+                self.FL = 0b00000100
             # * If registerA is greater than registerB, set the Greater-than `G` flag
             # to 1, otherwise set it to 0.
             elif self.reg[reg_a] > self.reg[reg_b]:
-                self.FL = 0b10100100
+                self.FL = 0b00000010
+            else:
+                self.FL = 0b00000000
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -143,7 +145,7 @@ class CPU:
         
         print(f"{LABEL} TRACE --> PC: %02i | RAM: %03i %03i %03i | Register: " % (
             self.pc,
-            # self.fl,
+            # self.FL,
             # self.ie,
             self.ram_read(self.pc),
             self.ram_read(self.pc + 1),
@@ -162,13 +164,14 @@ class CPU:
         # pc = 0
         # running = True
         while self.running:
-            ir = self.ram[self.pc] #instruction register
+            ir = self.ram_read(self.pc) #instruction register
+            # print(bin(ir))
             # -------------------------------------------
             #            Example: branch_table[n](x, y) Not necessary to pass in x or y just yet but mayb
             # -------------------------------------------
             if ir in self.branch_table:
                 self.branch_table[ir]() #Do not forget to use () to activate the function you are calling
-                self.trace()
+                # self.trace()
             else:
                 print(f'Unkown instruction {self.ir} at address {self.pc}')
                 sys.exit(1)
@@ -206,10 +209,8 @@ class CPU:
 
     def hlt(self):
         self.running = False
-        self.pc += 1
         # if self.ir == 0b00000001:
         #     running = False
-        #     self.pc += 1
 
     def mult(self):
         reg_a = self.ram[self.pc + 1]
@@ -229,27 +230,15 @@ class CPU:
         self.pc += 3
 
     def push(self):
-         # decrement SP
-	    self.reg[self.sp] -= 1
-
-	    # Get the value we want to store from the register
-        #---------Important-------------
-	    reg_num = self.ram[self.pc + 1]
-	    value = self.reg[reg_num]  # <-- this is the value that we want to push 
-        #-----------------------------------
-
-	    # Figure out where to store it
-	    top_of_stack_addr = self.reg[self.sp]
-
-	    # Store it
-	    self.ram[top_of_stack_addr] = value
-
-	    self.pc += 2
-        # self.reg[self.sp] -= 1
-        # value = self.ram_read(self.pc + 1)
-        # top = self.reg[self.sp]
-        # self.ram_write(value, top)
-        # self.pc += 2
+        self.reg[self.sp] -= 1
+        # Copy the value given to the address pointed by SP
+        reg_num = self.ram[self.pc+1]
+        value = self.reg[reg_num]
+        # Figure where to put it
+        top_of_stack_addr = self.reg[self.sp]
+        # put it there
+        self.ram[top_of_stack_addr] = value
+        self.pc += 2
 
     def pop(self):
         # 1. Copy the value from the address pointed to by `SP` to the given register.
@@ -279,20 +268,25 @@ class CPU:
         #this should be the top of stack
         top_of_stack_addr = self.reg[self.sp]
         # store pc as the value at the top of stack
-        self.pc = self.ram[top_of_stack_addr]
-        self.sp += 1
+        return_addr = self.ram[top_of_stack_addr]
+        self.pc = return_addr
+        self.reg[self.sp] += 1
 
+    def nop(self):
+        pass
+        
 #Extra stuff for practice ----------------------------------------------------------------------------------------------- 
 #-----------------------------------------------------------------------------------------------------------
     def jmp(self):
         # Jump to the address stored in the given register.
         # Set the `PC` to the address stored in the given register.
-        self.pc = self.reg[self.operand_a]
-    
-    def cmp(self):
+        address = self.ram_read(self.pc + 1)
+        self.pc = self.reg[address]
+
+    def cmp_(self):
         # Compare the values in two registers.
-        reg_a = self.ram[self.pc + 1]
-        reg_b = self.ram[self.pc + 2]
+        reg_a = self.ram_read(self.pc + 1)
+        reg_b = self.ram_read(self.pc + 2)
         self.alu("CMP", reg_a, reg_b)
         self.pc += 3
         # *This is an instruction handled by the ALU.*
@@ -300,12 +294,18 @@ class CPU:
     
     def jeq(self):
         # If `equal` flag is set (true), jump to the address stored in the given register.
-        if self.FL == 0b10100001:
-            self.pc = self.reg[self.operand_a]
+        address = self.ram_read(self.pc + 1)
+        if self.FL == 0b00000001:
+            self.pc = self.reg[address]
+        else:
+            self.pc += 2
 
     def jne(self):
         # If `E` flag is clear (false, 0), jump to the address stored in the given
         # register.
-        if self.FL == 0b10100010 or 0b10100100:
-            self.pc = self.reg[self.operand_a]
-
+        address = self.ram_read(self.pc + 1)
+        if self.FL != 0b00000001:
+            self.pc = self.reg[address]
+        else:
+            self.pc += 2
+    # python3 ls8.py examples/sctest.ls8
