@@ -26,6 +26,7 @@ class CPU:
         self.CMP = 0b10100111
         self.JEQ = 0b01010101
         self.JMP = 0b01010100
+        self.JNE = 0b01010110
         self.branch_table = {
                 self.LDI:self.ldi,
                 self.PRN:self.prn,
@@ -39,8 +40,18 @@ class CPU:
                 self.CMP:self.cmp,
                 self.JEQ:self.jeq,
                 self.JMP:self.jmp,
+                self.JNE:self.jne,
             }
-        self.sp = 7 #something like this i think
+        # instruction_length = ((IR & 0b11000000) >>6) + 1
+        # set_pc = ((IR & 0b00010000) >> 4)
+        # use_alu = ((IR & 0b00100000) >> 5)
+        ## Instruction Layout
+        # Meanings of the bits in the first byte of each instruction: `AABCDDDD`
+        # * `AA` Number of operands for this opcode, 0-2
+        # * `B` 1 if this is an ALU operation
+        # * `C` 1 if this instruction sets the PC
+        # * `DDDD` Instruction identifier
+        self.sp = 7 
         self.reg[self.sp] = 0xf4
         self.operand_a = self.ram_read(self.pc + 1)
         self.operand_b = self.ram_read(self.pc + 2)
@@ -91,6 +102,10 @@ class CPU:
         elif op == "MULT":
             self.reg[reg_a] *= self.reg[reg_b]
         elif op == 'CMP':
+            # 00 0 0 0LGE
+            # 10 1 0 0100 - Less than
+            # 10 1 0 0010 - Greater
+            # 10 1 0 0001 - Equal To
             # * If they are equal, set the Equal `E` flag to 1, otherwise set it to 0.
             if self.reg[reg_a] == self.reg[reg_b]:
                 self.FL = 0b10100001
@@ -105,42 +120,42 @@ class CPU:
         else:
             raise Exception("Unsupported ALU operation")
 
-    def trace(self):
-        """
-        Handy function to print out the CPU state. You might want to call this
-        from run() if you need help debugging.
-        """
+    # def trace(self):
+    #     """
+    #     Handy function to print out the CPU state. You might want to call this
+    #     from run() if you need help debugging.
+    #     """
 
-        print(f"TRACE: %02X | %02X %02X %02X |" % (
-            self.pc,
-            #self.fl,
-            #self.ie,
-            self.ram_read(self.pc),
-            self.ram_read(self.pc + 1),
-            self.ram_read(self.pc + 2)
-        ), end='')
-
-        for i in range(8):
-            print(" %02X" % self.reg[i], end='')
-
-        print()
-    # def trace(self, LABEL=str()):
-        
-    #     print(f"{LABEL} TRACE --> PC: %02i | RAM: %03i %03i %03i | Register: " % (
+    #     print(f"TRACE: %02X | %02X %02X %02X |" % (
     #         self.pc,
-    #         # self.fl,
-    #         # self.ie,
+    #         #self.fl,
+    #         #self.ie,
     #         self.ram_read(self.pc),
     #         self.ram_read(self.pc + 1),
     #         self.ram_read(self.pc + 2)
     #     ), end='')
+
     #     for i in range(8):
-    #         print(" %02i" % self.reg[i], end='')
-    #     print(" | Stack:", end='')
-        
-    #     for i in range(240, 244):
-    #         print(" %02i" % self.ram_read(i), end='')
+    #         print(" %02X" % self.reg[i], end='')
+
     #     print()
+    def trace(self, LABEL=str()):
+        
+        print(f"{LABEL} TRACE --> PC: %02i | RAM: %03i %03i %03i | Register: " % (
+            self.pc,
+            # self.fl,
+            # self.ie,
+            self.ram_read(self.pc),
+            self.ram_read(self.pc + 1),
+            self.ram_read(self.pc + 2)
+        ), end='')
+        for i in range(8):
+            print(" %02i" % self.reg[i], end='')
+        print(" | Stack:", end='')
+        
+        for i in range(240, 244):
+            print(" %02i" % self.ram_read(i), end='')
+        print()
 
     def run(self):
         """Run the CPU."""
@@ -153,6 +168,7 @@ class CPU:
             # -------------------------------------------
             if ir in self.branch_table:
                 self.branch_table[ir]() #Do not forget to use () to activate the function you are calling
+                self.trace()
             else:
                 print(f'Unkown instruction {self.ir} at address {self.pc}')
                 sys.exit(1)
@@ -264,6 +280,8 @@ class CPU:
         top_of_stack_addr = self.reg[self.sp]
         # store pc as the value at the top of stack
         self.pc = self.ram[top_of_stack_addr]
+        self.sp += 1
+
 #Extra stuff for practice ----------------------------------------------------------------------------------------------- 
 #-----------------------------------------------------------------------------------------------------------
     def jmp(self):
@@ -284,3 +302,10 @@ class CPU:
         # If `equal` flag is set (true), jump to the address stored in the given register.
         if self.FL == 0b10100001:
             self.pc = self.reg[self.operand_a]
+
+    def jne(self):
+        # If `E` flag is clear (false, 0), jump to the address stored in the given
+        # register.
+        if self.FL == 0b10100010 or 0b10100100:
+            self.pc = self.reg[self.operand_a]
+
