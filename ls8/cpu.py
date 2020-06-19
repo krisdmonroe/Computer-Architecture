@@ -170,7 +170,7 @@ class CPU:
             #            Example: branch_table[n](x, y) Not necessary to pass in x or y just yet but mayb
             # -------------------------------------------
             if ir in self.branch_table:
-                self.branch_table[ir]() #Do not forget to use () to activate the function you are calling
+                self.branch_table[ir]() #Do not forget to use () will activate all functions you are calling
                 # self.trace()
             else:
                 print(f'Unkown instruction {self.ir} at address {self.pc}')
@@ -213,8 +213,8 @@ class CPU:
         #     running = False
 
     def mult(self):
-        reg_a = self.ram[self.pc + 1]
-        reg_b = self.ram[self.pc + 2]
+        reg_a = self.ram_read(self.pc + 1)
+        reg_b = self.ram_read(self.pc + 1)
         self.alu("MULT", reg_a, reg_b)
         self.pc += 3
         # if self.ir == 0b10100010:
@@ -224,15 +224,15 @@ class CPU:
         #     self.pc += 3
 
     def add(self):
-        reg_a = self.ram[self.pc + 1]
-        reg_b = self.ram[self.pc + 2]
+        reg_a = self.ram_read(self.pc + 1)
+        reg_b = self.ram_read(self.pc + 1)
         self.alu("ADD", reg_a, reg_b)
         self.pc += 3
 
     def push(self):
         self.reg[self.sp] -= 1
         # Copy the value given to the address pointed by SP
-        reg_num = self.ram[self.pc+1]
+        reg_num = self.ram_read(self.pc + 1)
         value = self.reg[reg_num]
         # Figure where to put it
         top_of_stack_addr = self.reg[self.sp]
@@ -257,7 +257,7 @@ class CPU:
         self.ram[self.reg[self.sp]] = return_addr
 
 		# Get the address to call
-        reg_num = self.ram[self.pc + 1]
+        reg_num = self.ram_read(self.pc + 1)
         subroutine_addr = self.reg[reg_num]
 
 		# Call it
@@ -309,3 +309,38 @@ class CPU:
         else:
             self.pc += 2
     # python3 ls8.py examples/sctest.ls8
+# BINARY (Base 2)
+# +--------128s place
+# |+-------64s place
+# ||+------32s place
+# |||+-----16s place
+# ||||+----8s place
+# |||||+---4s place
+# ||||||+--2s place
+# |||||||+-1s place
+# ||||||||
+# 1101 0011
+# 1101
+#8 + 4 + 0 + 1
+#13 = d 
+# 0011
+# 0 + 0 + 2 + 1
+# 3
+#0xd3
+# Hexadecimal (used in CSS, Hashes) 
+#     0
+#     1
+#     2
+#     3
+#     4
+#     5
+#     6
+#     7
+#     8
+#     9
+#     A -- 10
+#     B -- 11
+#     C -- 12
+#     D -- 13
+#     E -- 14
+#     F -- 15
